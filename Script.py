@@ -5,14 +5,10 @@ import csv
 import sys
 import botometer
 import numpy
-#import GetOldTweets3 as got
-#import snap
 import time
 from datetime import datetime, timedelta
 from operator import add
 from textblob import TextBlob
-from instaloader import Instaloader, Profile
-import instaloader
 import json
 import re
 
@@ -47,13 +43,8 @@ def main():
                        "Nigeria 2015": [datetime(day=29, month=3, year=2015),datetime(day=29, month=3, year=2015),'MBuhari','GEJonathan',''],
                        "Sudáfrica 2019": [datetime(day=8, month=5, year=2019),datetime(day=8, month=5, year=2019),'CyrilRamaphosa','MmusiMaimane','Julius_S_Malema'],
                        "Alcaldia": [datetime(day=13, month=7, year=2020),datetime(day=10, month=8, year=2020),'parque','restaurante','ciclovía']}
-    #get_tweets(datos_proyectos["Colombia 2014"])
-    #pegue_csv(scrapping_header, "Parque-Restaurante-Ciclovía", "Parque-Restaurante-Ciclovía")
-    #get_tweets(datos_proyectos["Alcaldia"])
-    #to_sentiment("BACA 0410",["BogotáACieloAbierto","cielo abierto","restaurante","bogotacieloabierto","bogotaacieloabierto"])
     for nombre_proyecto in nombres_proyectos:
         carpeta = nombre_proyecto
-        #pegue_csv(scrapping_header, carpeta, nombre_proyecto)
         result = crear_grafo(nombre_proyecto + '.csv', datos_proyectos, nombre_proyecto, with_hashtags=False)
         #crear_long_conexiones(users=result['users'], edges=result['edges'], nombre_proyecto=nombre_proyecto)
 
@@ -83,61 +74,6 @@ def main():
                              days_filter_lower=-30, days_filter_upper=0)
         #crear_matriz_conexiones(users=result['users'], edges=result['edges'], nombre_proyecto=nombre_proyecto,
         #                        days_filter_lower=-30, days_filter_upper=0)
-
-    #to_botometer("Botometer", "tweetcount-full.csv", "tweetcount-full")
-
-#Para obtener los tweets
-def get_tweets(datos_proyecto):
-    tweetCriteria = got.manager.TweetCriteria()\
-        .setQuerySearch('('+datos_proyecto[2]+' OR '+datos_proyecto[3]+' OR '+datos_proyecto[4]+')')\
-        .setSince((datos_proyecto[0]-timedelta(150)).strftime('%Y-%m-%d'))\
-        .setUntil((datos_proyecto[0] + timedelta(150)).strftime('%Y-%m-%d'))
-    tweets = got.manager.TweetManager.getTweets(tweetCriteria)
-    print(tweets)
-    print(len(tweets))
-
-
-#Para pegar los archivos provenientes del OrgNeatUI
-def pegue_csv(scrapping_header, carpeta, archivo_salida):
-    csv_header = scrapping_header
-    csv_out = archivo_salida + '.csv'
-
-    csv_dir = os.getcwd()
-
-    dir_tree = os.walk(os.path.join(csv_dir, carpeta))
-    print('--------1-----------------------')
-    print(os.path.join(csv_dir, carpeta))
-
-    filenames = []
-    for dirpath, dirnames, f in dir_tree:
-        filenames.extend(f)
-
-    csv_list = []
-    for file in filenames:
-        if file.endswith('.csv'):
-            csv_list.append(file)
-
-    csv_merge = open(csv_out, 'w', encoding="utf8")
-    csv_merge.write(csv_header)
-    csv_merge.write("\n")
-
-    for file in csv_list:
-        wait_list = []
-        csv_in = open(os.path.join(carpeta, file), encoding="utf8")
-        print (os.path.join(carpeta, file))
-        for line in csv_in:
-            line = str(line)
-            if csv_header not in line:
-                if line.count(',')>=scrapping_header.count(','):
-                    if len(wait_list)>0:
-                        wait_list.append('\n')
-                        csv_merge.write(' '.join(wait_list))
-                        wait_list = []
-                wait_list.append(line.rstrip())
-        csv_merge.write(' '.join(wait_list))
-        csv_in.close()
-    csv_merge.close()
-    #print('Verify consolidated CSV file : ' + csv_out)
 
 #Crea los datos para el análisis
 def crear_grafo(archivo_tweets, datos_proyectos, nombre_salida, with_hashtags=True, days_filter_lower=None, days_filter_upper=None):
@@ -316,39 +252,6 @@ def crear_grafo(archivo_tweets, datos_proyectos, nombre_salida, with_hashtags=Tr
     return {'users': users_print, 'edges': edges, 'hashtags': hashtags}
 
 
-# noinspection PyBroadException
-def to_botometer(carpeta, nodelist, nombre_salida):
-    # Botometer initialization
-    rapidapi_key = "6e87fc4ad6msh16f38ddda67d8efp133e91jsn6df53b6f88db"  # now it's called rapidapi key
-    twitter_app_auth = {
-        'consumer_key': 'IFfp1WgFrDraT0OMYMNtsyLns',
-        'consumer_secret': 'WJ3Go4nu1WtteR5y08tG7NpTo6JvxhnGMnWNA4jdxOooo6m8GU',
-        'access_token': '1143362789160996864-agemUffwg40LkSrjTvT3p5JqyZK5Eq',
-        'access_token_secret': 'PY4kmNFlgarC1pRFsjgRv4UPBcyShtmDAGDOaB2LWrxwA',
-    }
-    bom = botometer.Botometer(wait_on_ratelimit=True, rapidapi_key=rapidapi_key, **twitter_app_auth)
-    #print(bom.check_account('Cardenas0Daniel'))
-    users = []
-    with open(os.path.join(carpeta, nodelist), 'rU', encoding="utf8") as File:
-        reader = csv.DictReader(File)
-        for i, line in enumerate(reader):
-            user['Username'] = line['Username']
-            user['Line'] = line
-            try:
-                result = bom.check_account(user['Username'])
-                user['Botometer'] = result['scores']['universal']
-            except:
-                user['Botometer'] = 0
-            print (str(i) + " " + user['Username'] + " " + str(user['Botometer']))
-
-    with open('Botometer ' + nombre_salida + '.csv', 'wb', encoding="utf8") as File:
-        writer = csv.writer(File)
-        writer.writerow(
-            ['Clusters (2)','Username','Number of Records'])
-        for u in users:
-            writer.writerow([u['Line'], u['Botometer']])
-
-
 #Crea la matriz de probabilidades basándose en las menciones
 # noinspection PyTypeChecker
 def crear_matriz_conexiones(users, edges, nombre_proyecto, days_filter_lower=None, days_filter_upper=None):
@@ -422,126 +325,6 @@ def crear_long_conexiones(users, edges, nombre_proyecto, days_filter_lower=None,
                    grupo_target = 0
 
                 writer.writerow([source, target, source_username, target_username, d[target][0], d[target][1], d[target][2], d[target][3], grupo_source, grupo_target])
-
-
-def to_sentiment(archivo_tweets, focus_words):
-    max_int = sys.maxsize
-    tweets_print = []
-    tweets_words = []
-    with open(archivo_tweets+".csv", 'rU', encoding="utf8") as File:
-        tweets = csv.DictReader(File,delimiter=";")
-        texts = []
-        while True:
-            # decrease the maxInt value by factor 10
-            # as long as the OverflowError occurs.
-            try:
-                csv.field_size_limit(max_int)
-                break
-            except OverflowError:
-                max_int = int(max_int / 10)
-        for tweet in tweets:
-            if bool([fw for fw in focus_words if(fw in tweet['text'])]) and tweet['text'] not in texts:
-                tweet['text'] = re.sub(r'[\n+]', ' ', tweet['text'])
-                tweet['eng'] = ""
-                tweet['index'] = len(texts)
-                tweet['polarity'] = None
-                tweet['subjectivity'] = None
-                #tweet['timeset_count'] = tweet['timeset'].count('T')
-                #tweet['timeset'] = tweet['timeset'].split('Z')[0].replace("<[", "") + "Z"
-
-                analysis = TextBlob(str(tweet['text']))
-                print(tweet['text'])
-                texts.append(tweet['text'])
-                time.sleep(30)
-                try:
-                    eng = analysis.translate(to='en')
-                    tweet['eng'] = eng.string
-                    tweet['polarity'] = eng.sentiment.polarity
-                    tweet['subjectivity'] = eng.sentiment.subjectivity
-                    print(tweet['eng'] + " - " + str(tweet['polarity']))
-                except Exception as e:
-                    # Mostramos este mensaje en caso de que se presente algún problema
-                    print("El elemento no está presente "+ str(e))
-                tweets_print.append(tweet)
-                text = re.sub(r'[@,.!?¿¡/#;:()\'’"”“👉]', '', tweet['text'])
-                words = text.lower().replace('á','a').replace('é','e').replace('í','i').replace('ó','o').replace('ú','u').replace('s ',' ').split()
-                words = list(dict.fromkeys(words))
-                for word in words:
-                    if len(word) > 4 and not 'http' in word:
-                        temp = tweet.copy()
-                        temp['palabra'] = word
-                        tweets_words.append(temp)
-    File.close()
-
-    header = ['\ufeffid',"time","created_at","from_user_name","text","filter_level","possibly_sensitive","withheld_copyright",
-                  "withheld_scope","truncated","retweet_count","favorite_count","lang","to_user_name","in_reply_to_status_id",
-                  "quoted_status_id","source","location","lat","lng","from_user_id","from_user_realname","from_user_verified",
-                  "from_user_description","from_user_url","from_user_profile_image_url","from_user_utcoffset","from_user_timezone",
-                  "from_user_lang","from_user_tweetcount","from_user_followercount","from_user_friendcount","from_user_favourites_count",
-                  "from_user_listed","from_user_withheld_scope","from_user_created_at",'eng', 'polarity', 'subjectivity', 'index']
-
-    '''header = ['index', 'Id', 'text', 'timeset', 'twitter_type', 'lat', 'lng', 'place_country', 'place_type',
-                  'place_fullname', 'place_name',
-                  'created_at', 'lang', 'possibly_sensitive', 'quoted_status_permalink', 'description', 'email',
-                  'profile_image',
-                  'friends_count', 'followers_count', 'real_name', 'location', 'emoji_alias', 'emoji_html_decimal',
-                  'emoji_utf8',
-                  'cleaned_label', 'eng', 'polarity', 'subjectivity']'''
-
-    with open('Sentimiento ' + archivo_tweets + '.csv', 'w', encoding="utf8", newline='') as file:
-        writer = csv.writer(file, delimiter=';')
-        writer.writerow(header)
-        for tweet in tweets_print:
-            t = []
-            for h in header:
-                t.append(str(tweet[h]).replace(';', '').replace('.', ','))
-            writer.writerow(t)
-        file.close()
-
-    with open('Palabras ' + archivo_tweets + '.csv', 'w', encoding="utf8", newline='') as file:
-        writer = csv.writer(file, delimiter=';')
-        header.append('palabra')
-        writer.writerow(header)
-        for tweet in tweets_words:
-            t = []
-            for h in header:
-                t.append(str(tweet[h]).replace(';', '').replace('.', ','))
-            writer.writerow(t)
-        file.close()
-
-
-def get_usersa_posts_by_hashtag_ig(query):
-    loader = Instaloader()
-    NUM_POSTS = 10
-    posts = loader.get_hashtag_posts(query)
-    users = []
-    count = 0
-    for post in posts:
-        print(post)
-        profile = post.owner_profile
-        caption = post.caption
-        users.append([profile, caption])
-        count += 1
-        if count == NUM_POSTS:
-            break
-    return users
-
-
-def get_hashtags_posts(query):
-    posts = loader.get_hashtag_posts(query)
-    prof_bio=[]
-    count = 0
-    for post in posts:
-        #print(post)
-        #caption=post.caption
-        postprofile=post.profile
-        bio=Profile.from_username(loader.context, postprofile)
-        biopf=bio.biography
-        prof_bio.append([postprofile,biopf])
-        count += 1
-        if count == NUM_POSTS:
-                break
-    return prof_bio
 
 
 
